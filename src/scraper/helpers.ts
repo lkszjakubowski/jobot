@@ -1,5 +1,7 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { Cluster } from 'puppeteer-cluster';
 import LaunchResult from '../interfaces/LaunchResult';
+import { TaskFunction } from 'puppeteer-cluster/dist/Cluster';
 
 export async function launchPuppeteer(options: object): Promise<LaunchResult> {
   const browser: Browser = await puppeteer.launch(options);
@@ -29,14 +31,36 @@ export async function extractItems(params: {
 }) {
   const items: string[] = await params.page.$$eval(
     params.targetSelector,
-    (elements: HTMLElement[]) =>
-      elements.map(
-        (element) =>
-          element.querySelector(params.searchedElementSelector)[
-            params.searchedElementAttr
-          ]
-      )
+    (elements: HTMLElement[], selector, attribute) => {
+      return elements.map(
+        (element) => element.querySelector(selector)[attribute]
+      );
+    },
+    params.searchedElementSelector,
+    params.searchedElementAttr
   );
 
   return items;
+}
+
+export async function crawlMultiple(params: {
+  pages: string[];
+  scrapingFunction: TaskFunction<string, void>;
+}) {
+  const cluster = await Cluster.launch({
+    concurrency: Cluster.CONCURRENCY_CONTEXT,
+    maxConcurrency: 4,
+    monitor: true,
+  });
+
+  cluster.on('taskerror', (err, data) => {
+    console.log(`Error crawling ${data}: ${err.message}`);
+  });
+
+  for (const page of params.pages) {
+    cluster.queue(page, params.scrapingFunction);
+  }
+
+  await cluster.idle();
+  await cluster.close();
 }

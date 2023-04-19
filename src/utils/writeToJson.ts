@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
+import JobOffer from '../interfaces/JobOffer';
 
-export default async function (file: string, data: object) {
+export default async function (file: string, data: JobOffer) {
   try {
     const fileExists = await fs
       .access(file)

@@ -72,12 +72,12 @@ export async function scrapeLinks(
     : [...links].slice(0, number);
 }
 
-const scrapeOffer = async ({ page, data: url }): Promise<void> => {
+export const scrapeOffer = async ({ page, data: url }): Promise<void> => {
   await page.goto(url);
 
   const jobOffer: JobOffer[] = await page.$$eval(
     offerDetailsSelectors.wrapper,
-    (elements: HTMLElement[]) =>
+    (elements: HTMLElement[], offerDetailsSelectors) =>
       elements.map((element) => {
         const salaryElement = element.querySelector<HTMLElement>(
           offerDetailsSelectors.salary
@@ -125,30 +125,12 @@ const scrapeOffer = async ({ page, data: url }): Promise<void> => {
             offerDetailsSelectors.addedAt
           ).innerText,
         };
-      })
+      }),
+    offerDetailsSelectors
   );
 
   if (jobOffer.length > 0) {
-    const file = '../../../scrap-results/just-join-it';
+    const file = './scrap-results/just-join-it-offers-data.json';
     await writeToJson(file, jobOffer[0]);
   }
 };
-
-export async function scrapeCluster(links: string[]): Promise<void> {
-  const cluster = await Cluster.launch({
-    concurrency: Cluster.CONCURRENCY_CONTEXT,
-    maxConcurrency: 4,
-    monitor: true,
-  });
-
-  cluster.on('taskerror', (err, data) => {
-    console.log(`Error crawling ${data}: ${err.message}`);
-  });
-
-  for (const link of links) {
-    cluster.queue(link, scrapeOffer);
-  }
-
-  await cluster.idle();
-  await cluster.close();
-}
