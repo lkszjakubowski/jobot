@@ -1,4 +1,4 @@
-export interface ScrapperOptions {
+export default interface ScraperOptions {
   searchValue: string;
   maxRecords: number;
 }
